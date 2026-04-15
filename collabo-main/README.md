@@ -1,29 +1,81 @@
-# Collabo
+# 🚀 Collabo — Real-Time Collaborative Code Editor
 
-A simple web-based real-time collaborative code editor where users can join as **editor** or **viewer**, using a shared session.
-
----
-
-## Live Demo
-
-Try it here: https://collabo-pjlq.onrender.com/
+A modern, lightweight **real-time collaborative code editor** that allows multiple users to join a shared session as an **Editor** or **Viewer**. Built for seamless collaboration with instant synchronization.
 
 ---
 
-## Features
+## 🌐 Live Demo
 
-- Create a **new session**, generating a *Session ID* and *Password*.
-- Join an existing session as an **Editor** (can edit code) or **Viewer** (read-only).
-- Real-time sync: all participants see updates instantly.
-- Lightweight, minimal UI with immediate usability.
+🔗 https://collabo-pjlq.onrender.com/
 
 ---
 
-## Project Structure
+## ✨ Key Features
 
-- `index.html` — Core interface for session creation and joining.
-- `index.js` — Frontend logic for handling session creation, joining, and real-time updates.
-- `worker.js` — Handles synchronization (e.g., via Web Workers or messaging).
-- `package.json` / `package-lock.json` — Project metadata and dependencies.
+* 🔐 **Secure Session Access**
+  Create a new session with a unique *Session ID* and *Password*.
+
+* 👥 **Role-Based Collaboration**
+
+  * **Editor** → Can write and modify code
+  * **Viewer** → Read-only access
+
+* ⚡ **Real-Time Sync**
+  All changes are reflected instantly across connected users.
+
+* 🎯 **Minimal & Fast UI**
+  Clean interface focused on usability and speed.
 
 ---
+
+## 🛠️ Tech Stack
+
+* **Frontend:** HTML, CSS, JavaScript
+* **Real-Time Communication:** Web APIs / Messaging (Worker-based sync)
+* **Deployment:** Render
+
+---
+
+## 📂 Project Structure
+
+```
+Collabo/
+│── index.html        # Main UI (session create/join)
+│── index.js          # Frontend logic & event handling
+│── worker.js         # Real-time synchronization logic
+│── package.json      # Project metadata & dependencies
+│── package-lock.json
+```
+
+---
+
+## 🚀 How to Run Locally
+
+```bash
+git clone https://github.com/your-username/collabo.git
+cd collabo
+npm install
+npm start
+```
+
+---
+
+## 💡 Future Improvements
+
+* 🧠 Add syntax highlighting (Monaco / CodeMirror)
+* 🔄 Multi-language support
+* 💬 In-app chat for collaboration
+* ☁️ Persistent sessions with database
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to fork this repo and submit a pull request.
+
+---
+
+## 📌 Author
+
+Developed by **Riya**
+
