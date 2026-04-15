@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Code Editor</title>
+    <style>
+        /* --- Google Font --- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        /* --- CSS Variables for Theming --- */
+        :root {
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --bg-color: #f8f8f8;
+            --activity-bar-bg: #e8e8e8;
+            --sidebar-bg: #f3f3f3;
+            --status-bar-bg: #e8e8e8;
+            --text-color: #1f1f1f;
+            --subtle-text-color: #666666;
+            --accent-color: #007acc;
+            --button-text-color: #ffffff;
+            --border-color: #dddddd;
+            --input-bg-color: #FFF;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --status-connected-bg: #1e8e3e;
+            --status-disconnected-bg: #d93025;
+            --status-connecting-bg: #f9ab00;
+            --error-color: #d93025;
+            --danger-color-hover: #c2251c;
+        }
+
+        body.dark-theme {
+            --bg-color: #1e1e1e;
+            --activity-bar-bg: #333333;
+            --sidebar-bg: #252526;
+            --status-bar-bg: #000000;
+            --text-color: #cccccc;
+            --subtle-text-color: #999999;
+            --accent-color: #0090f1;
+            --border-color: #3c3c3c;
+            --input-bg-color: #3c3c3c;
+            --shadow-color: rgba(0, 0, 0, 0.35);
+            --status-connected-bg: #1f7c33;
+            --status-disconnected-bg: #b52d24;
+            --status-connecting-bg: #d28f00;
+            --error-color: #b52d24;
+            --danger-color-hover: #cf3329;
+        }
+        
+        /* --- Base & Layout --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%; width: 100%;
+            overflow: hidden;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.2s linear;
+        }
+        #app-container { display: flex; height: 100vh; position: relative; }
+        
+        /* --- Activity Bar & Sidebar --- */
+        #activity-bar {
+            width: 50px;
+            background-color: var(--activity-bar-bg);
+            padding-top: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            border-right: 1px solid var(--border-color);
+            z-index: 10;
+        }
+        .action-icon {
+            background: none; border: none; color: var(--text-color);
+            font-size: 24px; padding: 12px; border-radius: 8px; cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .action-icon:hover { background-color: rgba(0,0,0,0.1); }
+        .action-icon.active { color: var(--accent-color); background-color: rgba(0,0,0,0.08); }
+        
+        #sidebar {
+            width: 300px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            position: absolute; left: 50px; top: 0; bottom: 0;
+            z-index: 5;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            padding: 20px;
+            display: flex; flex-direction: column;
+        }
+        #app-container.sidebar-visible #sidebar { transform: translateX(0); }
+        .sidebar-section { margin-bottom: 25px; }
+        .sidebar-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 15px; }
+        .sidebar-section p { font-size: 14px; color: var(--subtle-text-color); line-height: 1.6; margin-bottom: 20px; }
+
+        /* --- Main Content & Status Bar --- */
+        #main-content { flex-grow: 1; display: flex; flex-direction: column; }
+        #editor-container { flex-grow: 1; }
+        #status-bar {
+            height: 24px;
+            background-color: var(--status-bar-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 15px; font-size: 12px; color: var(--subtle-text-color);
+        }
+        #status-light { width: 10px; height: 10px; border-radius: 50%; }
+        .status-indicator { display: flex; align-items: center; gap: 8px; }
+        #session-info { cursor: pointer; }
+        #session-info:hover { color: var(--text-color); }
+        
+        /* --- Language Selector --- */
+        #language-selector {
+            background-color: transparent;
+            border: 1px solid transparent;
+            color: var(--subtle-text-color);
+            font-family: var(--font-family); font-size: 12px;
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            padding: 2px 5px; cursor: pointer; border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+        #language-selector:hover {
+            background-color: rgba(0,0,0,0.1);
+            color: var(--text-color);
+        }
+        #language-selector:focus { outline: none; }
+        body.dark-theme #language-selector {
+            color: var(--text-color);
+            background-color: var(--activity-bar-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        /* --- Form & Button Styles --- */
+        .input-group { margin-bottom: 15px; }
+        input {
+            width: 100%; padding: 10px; font-size: 14px;
+            border-radius: 6px; border: 1px solid var(--border-color);
+            background-color: var(--input-bg-color); color: var(--text-color);
+        }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        button {
+            padding: 10px; border-radius: 6px; font-size: 14px;
+            font-weight: 500; border: none; cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-primary { background-color: var(--accent-color); color: var(--button-text-color); }
+        .btn-secondary { background-color: var(--activity-bar-bg); color: var(--text-color); }
+        .btn-danger { background-color: var(--error-color); color: var(--button-text-color); }
+        .btn-danger:hover { background-color: var(--danger-color-hover); }
+        #sidebar-status { min-height: 20px; font-size: 13px; text-align: center; margin-top: 15px; }
+
+        /* --- Session Info Panel --- */
+        .info-item { margin-bottom: 12px; }
+        .info-item label { display: block; font-size: 12px; font-weight: 500; color: var(--subtle-text-color); margin-bottom: 4px; }
+        .info-value {
+            display: flex; align-items: center; justify-content: space-between;
+            background-color: var(--bg-color); padding: 8px 12px; border-radius: 6px;
+            font-family: monospace; font-size: 14px;
+        }
+        .copy-btn {
+            background: none; border: none; color: var(--subtle-text-color);
+            cursor: pointer; font-size: 12px; font-weight: 600;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- ACTIVITY BAR -->
+        <div id="activity-bar">
+            <div>
+                <button class="action-icon" id="connect-btn" title="Connect / Session Info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="m22 17-2-2 2-2"/><path d="m16 17 2-2-2-2"/></svg>
+                </button>
+            </div>
+            <div>
+                <button class="action-icon" id="theme-toggle" title="Toggle Theme">
+                    <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- SIDEBAR -->
+        <div id="sidebar">
+            <div id="session-info-panel" class="sidebar-section hidden">
+                <h2>Session Information</h2>
+                <div class="info-item">
+                    <label>Session ID</label>
+                    <div class="info-value">
+                        <span id="session-id-display"></span>
+                        <button class="copy-btn" data-target="session-id-display">COPY</button>
+                    </div>
+                </div>
+                <div class="info-item" id="password-info-item">
+                    <label>Password</label>
+                    <div class="info-value">
+                        <span id="session-pwd-display"></span>
+                        <button class="copy-btn" data-target="session-pwd-display">COPY</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="connection-panel" class="sidebar-section">
+                <h2>Connect</h2>
+                <div class="input-group">
+                    <input type="text" id="joinIdInput" placeholder="Enter Session ID">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="joinPwdInput" placeholder="Password (for Editors)">
+                </div>
+                <div class="button-group">
+                    <button id="createBtn" class="btn-primary">Create New</button>
+                    <button id="joinAsViewerBtn" class="btn-secondary">Join as Viewer</button>
+                </div>
+                 <button id="joinAsEditorBtn" class="btn-primary" style="width: 100%; margin-top: 10px;">Join as Editor</button>
+                 <div id="sidebar-status"></div>
+            </div>
+            
+            <div id="exit-panel" class="sidebar-section hidden">
+                <h2>Connected</h2>
+                <p>You are in a session. Click below to disconnect.</p>
+                <button id="exitBtn" class="btn-danger">Exit Room</button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div id="main-content">
+            <div id="editor-container"></div>
+            <div id="status-bar">
+                <div class="status-indicator">
+                    <div id="status-light"></div>
+                    <span id="status-text">Disconnected</span>
+                </div>
+                <div class="status-indicator">
+                    <span id="role-text"></span>
+                    <span id="session-info" title="Click to see session details"></span>
+                    <select id="language-selector">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- UI Elements ---
+            const appContainer = document.getElementById('app-container');
+            const connectBtn = document.getElementById('connect-btn');
+            const sidebar = document.getElementById('sidebar');
+            const statusLight = document.getElementById('status-light');
+            const statusText = document.getElementById('status-text');
+            const sessionInfoDisplay = document.getElementById('session-info');
+            const roleText = document.getElementById('role-text');
+            const sidebarStatus = document.getElementById('sidebar-status');
+            const languageSelector = document.getElementById('language-selector');
+
+            // --- Sidebar Panels & Buttons ---
+            const sessionInfoPanel = document.getElementById('session-info-panel');
+            const sessionIdDisplay = document.getElementById('session-id-display');
+            const sessionPwdDisplay = document.getElementById('session-pwd-display');
+            const passwordInfoItem = document.getElementById('password-info-item');
+            const connectionPanel = document.getElementById('connection-panel');
+            const exitPanel = document.getElementById('exit-panel');
+            const exitBtn = document.getElementById('exitBtn');
+            const createBtn = document.getElementById('createBtn');
+            const joinAsEditorBtn = document.getElementById('joinAsEditorBtn');
+            const joinAsViewerBtn = document.getElementById('joinAsViewerBtn');
+
+            // --- App State ---
+            let monacoEditor;
+            let ws;
+            let sessionInfo = {};
+            let isUpdatingFromRemote = false;
+            let currentRole = 'None';
+            let connectionState = 'disconnected';
+
+            // --- Monaco Editor Initialization ---
+            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
+            require(['vs/editor/editor.main'], () => {
+                monacoEditor = monaco.editor.create(document.getElementById('editor-container'), {
+                    value: `// Welcome!\n// Select a language from the bottom-right corner.\n// Click the connect icon on the left to start a session.`,
+                    language: 'javascript', theme: 'vs', minimap: { enabled: true }, readOnly: true,
+                });
+                applyTheme(localStorage.getItem('theme') || 'light-theme');
+                window.addEventListener('resize', () => monacoEditor.layout());
+                monacoEditor.onDidChangeModelContent(() => {
+                    if (isUpdatingFromRemote) return;
+                    if (ws && ws.readyState === WebSocket.OPEN && currentRole === 'Editor') {
+                        ws.send(JSON.stringify({ TYPE: "UPDATE", ID: sessionInfo.id, PWD: sessionInfo.pwd, TEXT: monacoEditor.getValue() }));
+                    }
+                });
+            });
+
+            // --- Theme Management ---
+            const themeToggle = document.getElementById('theme-toggle');
+            function applyTheme(theme) {
+                const isDark = (theme === 'dark-theme');
+                document.body.classList.toggle('dark-theme', isDark);
+                document.querySelector('.icon-sun').style.display = isDark ? 'none' : 'block';
+                document.querySelector('.icon-moon').style.display = isDark ? 'block' : 'none';
+                if (monacoEditor) { monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs'); }
+            }
+            applyTheme(localStorage.getItem('theme') || 'light-theme');
+            themeToggle.addEventListener('click', () => {
+                const newTheme = document.body.classList.contains('dark-theme') ? 'light-theme' : 'dark-theme';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+            
+            // --- UI & Sidebar Logic ---
+            function toggleSidebar(forceOpen = false) {
+                const shouldBeVisible = forceOpen || !appContainer.classList.contains('sidebar-visible');
+                appContainer.classList.toggle('sidebar-visible', shouldBeVisible);
+                connectBtn.classList.toggle('active', shouldBeVisible);
+                setTimeout(() => monacoEditor && monacoEditor.layout(), 300);
+            }
+            connectBtn.addEventListener('click', () => toggleSidebar());
+            sessionInfoDisplay.addEventListener('click', () => { if(connectionState === 'connected') toggleSidebar(true); });
+
+            function updateStatus(state, text) {
+                connectionState = state;
+                const colorMap = { connected: 'status-connected-bg', disconnected: 'status-disconnected-bg', connecting: 'status-connecting-bg' };
+                statusLight.style.backgroundColor = `var(--${colorMap[state]})`;
+                statusText.textContent = text;
+            }
+            
+            // --- Centralized Handlers ---
+            function handleSuccessfulConnection() {
+                if (connectionState === 'connected') return;
+                updateStatus('connected', 'Connected');
+                
+                monacoEditor.updateOptions({ readOnly: currentRole === 'Viewer' });
+                sessionInfoDisplay.textContent = `ID: ${sessionInfo.id}`;
+                roleText.textContent = currentRole;
+                sessionIdDisplay.textContent = sessionInfo.id;
+                passwordInfoItem.classList.toggle('hidden', currentRole !== 'Editor');
+                if (currentRole === 'Editor') sessionPwdDisplay.textContent = sessionInfo.pwd;
+                
+                sessionInfoPanel.classList.remove('hidden');
+                connectionPanel.classList.add('hidden');
+                exitPanel.classList.remove('hidden');
+                sidebarStatus.textContent = "";
+
+                if (appContainer.classList.contains('sidebar-visible')) {
+                    toggleSidebar();
+                }
+            }
+            
+            function resetToDisconnectedState() {
+                updateStatus('disconnected', 'Disconnected');
+                if (monacoEditor) monacoEditor.updateOptions({ readOnly: true });
+                sessionInfoDisplay.textContent = '';
+                roleText.textContent = '';
+                sessionInfo = {};
+                currentRole = "None";
+                sessionInfoPanel.classList.add('hidden');
+                exitPanel.classList.add('hidden');
+                connectionPanel.classList.remove('hidden');
+            }
+            resetToDisconnectedState();
+
+            // --- WebSocket Logic ---
+            function connectWebSocket(payload) {
+                if (ws && ws.readyState !== WebSocket.CLOSED) ws.close();
+                updateStatus('connecting', 'Connecting...');
+                sidebarStatus.style.color = 'var(--subtle-text-color)';
+                sidebarStatus.textContent = "Connecting...";
+                
+                const wsAddress = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
+                ws = new WebSocket(wsAddress);
+
+                ws.onopen = () => {
+                    sidebarStatus.textContent = "Connection established, sending request...";
+                    ws.send(JSON.stringify(payload));
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        let isConnectionConfirmed = false;
+                        
+                        switch(msg.TYPE) {
+                            case 'DATA':
+                                sessionInfo = { id: msg.ID, pwd: msg.PWD };
+                                currentRole = 'Editor';
+                                isConnectionConfirmed = true;
+                                break;
+                            case 'STATUS':
+                                if (msg.STATUS === 'OK') isConnectionConfirmed = true;
+                                else {
+                                    sidebarStatus.style.color = 'var(--error-color)';
+                                    sidebarStatus.textContent = `Error: ${msg.ACK || 'Request failed.'}`;
+                                    ws.close();
+                                }
+                                break;
+                            case 'TEXT':
+                                if (connectionState === 'connecting') isConnectionConfirmed = true;
+                                
+                                // --- CURSOR FIX STARTS HERE ---
+                                isUpdatingFromRemote = true;
+                                if (monacoEditor) {
+                                    // Step 1: Save the original selections (cursors and highlights).
+                                    const oldSelections = monacoEditor.getSelections();
+                                    
+                                    const model = monacoEditor.getModel();
+                                    const fullRange = model.getFullModelRange();
+                                    const edit = { range: fullRange, text: msg.TEXT };
+                                    
+                                    // Step 2: Apply the edit. Monaco will move the cursors, but might reset the column.
+                                    model.pushEditOperations([], [edit], () => null);
+                                    
+                                    // Step 3: Get the new selections that Monaco calculated.
+                                    const newSelections = monacoEditor.getSelections();
+                                    
+                                    // Step 4: If we have valid old and new selections, restore the original columns.
+                                    if (oldSelections && newSelections && oldSelections.length === newSelections.length) {
+                                        const finalSelections = newSelections.map((newSelection, i) => {
+                                            const oldSelection = oldSelections[i];
+                                            // Create a new selection with the NEW line numbers but the OLD column numbers.
+                                            return new monaco.Selection(
+                                                newSelection.selectionStartLineNumber,
+                                                oldSelection.selectionStartColumn,
+                                                newSelection.positionLineNumber,
+                                                oldSelection.positionColumn
+                                            );
+                                        });
+                                        
+                                        // Step 5: Apply the corrected selections.
+                                        monacoEditor.setSelections(finalSelections);
+                                    }
+                                }
+                                isUpdatingFromRemote = false;
+                                // --- CURSOR FIX ENDS HERE ---
+                                break;
+                        }
+                        if (isConnectionConfirmed) handleSuccessfulConnection();
+                    } catch (e) {
+                        sidebarStatus.style.color = 'var(--error-color)';
+                        sidebarStatus.textContent = "Invalid server message.";
+                        console.error('Parse Error:', e);
+                    }
+                };
+
+                ws.onclose = resetToDisconnectedState;
+                ws.onerror = (err) => {
+                    sidebarStatus.style.color = 'var(--error-color)';
+                    sidebarStatus.textContent = "Connection failed.";
+                    console.error('WebSocket Error:', err);
+                };
+            }
+
+            // --- Event Listeners ---
+            createBtn.addEventListener('click', () => {
+                currentRole = 'Editor';
+                connectWebSocket({ TYPE: "CREATE" });
+            });
+            
+            joinAsEditorBtn.addEventListener('click', () => {
+                const id = parseInt(document.getElementById('joinIdInput').value, 10);
+                const pwd = parseInt(document.getElementById('joinPwdInput').value, 10);
+                if (!id || !pwd) { sidebarStatus.style.color = 'var(--error-color)'; sidebarStatus.textContent = 'ID and Password are required.'; return; }
+                sessionInfo = { id, pwd }; currentRole = 'Editor';
+                connectWebSocket({ TYPE: "JOIN", ID: id, PWD: pwd });
+            });
+
+            joinAsViewerBtn.addEventListener('click', () => {
+                const id = parseInt(document.getElementById('joinIdInput').value, 10);
+                if (!id) { sidebarStatus.style.color = 'var(--error-color)'; sidebarStatus.textContent = 'Session ID is required.'; return; }
+                sessionInfo = { id }; currentRole = 'Viewer';
+                connectWebSocket({ TYPE: "JOIN", ID: id });
+            });
+
+            exitBtn.addEventListener('click', () => { if (ws) ws.close(); });
+            
+            languageSelector.addEventListener('change', (e) => {
+                if (monacoEditor) {
+                    monaco.editor.setModelLanguage(monacoEditor.getModel(), e.target.value);
+                }
+            });
+            
+            sidebar.addEventListener('click', (e) => {
+                if (e.target.classList.contains('copy-btn')) {
+                    const textToCopy = document.getElementById(e.target.dataset.target).textContent;
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        e.target.textContent = 'COPIED!';
+                        e.target.style.color = 'var(--status-connected-bg)';
+                        setTimeout(() => { e.target.textContent = 'COPY'; e.target.style.color = ''; }, 2000);
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
